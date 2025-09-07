@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Local DB MCP Server{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header">
+        <h1>Local DB MCP Server</h1>
+        <div class="status-indicator">
+            <span class="status-icon">🟢</span>
+            <span class="status-text">MCPサーバー稼働中</span>
+        </div>
+    </div>
+    
+    <h2>ファイルアップロード</h2>
+    <div class="upload-section">
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="file-input-wrapper">
+                <input type="file" id="fileInput" accept=".csv,.tsv,.duckdb" required>
+                <button type="submit" id="uploadButton" style="display: none;">アップロード</button>
+            </div>
+        </form>
+        <div class="file-type-info">
+            <small>対応ファイル形式: CSV, TSV, DuckDB</small>
+        </div>
+    </div>
+    
+    <div id="result"></div>
+    
+    <div class="data-section-header">
+        <h2>AIが参照できるデータ</h2>
+        <div class="action-buttons">
+            <button onclick="loadTables()">更新</button>
+            <button onclick="downloadDatabase()" class="download-button">データベースをダウンロード</button>
+            <button onclick="showDeleteDialog()" class="delete-button">テーブルを削除</button>
+        </div>
+    </div>
+    <div id="tables"></div>
+</div>
+
+<!-- 削除ダイアログ -->
+<div id="deleteDialog" class="delete-dialog">
+    <div class="delete-dialog-content">
+        <h3>テーブルを削除</h3>
+        <p>削除するテーブルを選択してください：</p>
+        <select id="tableSelect" style="width: 100%; padding: 8px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px;">
+            <option value="">テーブルを選択してください</option>
+        </select>
+        <div class="delete-dialog-buttons">
+            <button onclick="closeDeleteDialog()" class="cancel-button">キャンセル</button>
+            <button onclick="confirmDeleteTable()" class="confirm-delete-button">削除</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

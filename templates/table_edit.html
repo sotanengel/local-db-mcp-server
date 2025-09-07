@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}テーブルの定義編集: {{ table_name }} - Local DB MCP Server{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="nav">
+        <a href="/">← ホームに戻る</a>
+        <a href="/table/{{ table_name }}">← データ表示に戻る</a>
+    </div>
+    
+    <h1>{{ table_name }} <span id="recordCount" class="record-count"></span></h1>
+    <div id="editContent"></div>
+    <div id="result"></div>
+</div>
+
+<script>
+    const tableName = '{{ table_name }}';
+    
+    async function loadEditContent() {
+        try {
+            const response = await fetch(`/table/${tableName}/metadata`);
+            const data = await response.json();
+            
+            // レコード数を表示
+            document.getElementById('recordCount').textContent = `${data.row_count}レコード`;
+            
+            let html = '';
+            
+            // テーブル説明の定義編集
+            html += `<h4>テーブル情報</h4>`;
+            html += `<table class="table-info-table">
+                        <tr><th>テーブル名</th><th>テーブル説明</th><th>操作</th></tr>
+                        <tr>
+                            <td><strong>${tableName}</strong></td>
+                            <td>
+                                <input type="text" id="tableComment" placeholder="テーブルの説明を入力してください" value="${data.table_comment || ''}" class="description-input">
+                            </td>
+                            <td>
+                                <button onclick="updateTableComment('${tableName}')" class="update-button">更新</button>
+                            </td>
+                        </tr>
+                    </table>`;
+            
+            html += '<h4>カラム一覧</h4>';
+            html += '<table class="columns-table">';
+            html += '<tr><th>カラム名</th><th>データ型</th><th>説明</th><th>操作</th></tr>';
+            
+            for (const column of data.columns) {
+                html += `<tr>
+                            <td><strong>${column.name}</strong></td>
+                            <td>${column.type}</td>
+                            <td>${column.comment || '説明なし'}</td>
+                            <td>
+                                <button onclick="renameColumn('${tableName}', '${column.name}')" class="action-button">名前変更</button>
+                                <button onclick="editColumnComment('${tableName}', '${column.name}', '${column.comment || ''}')" class="action-button">説明編集</button>
+                            </td>
+                        </tr>`;
+            }
+            html += '</table>';
+            
+            document.getElementById('editContent').innerHTML = html;
+        } catch (error) {
+            document.getElementById('editContent').innerHTML = `<p>エラー: ${error.message}</p>`;
+        }
+    }
+    
+    function showResult(message, type) {
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
+    }
+    
+    async function updateTableComment(tableName) {
+        const comment = document.getElementById('tableComment').value;
+        try {
+            const response = await fetch(`/table/${tableName}/comment?comment=${encodeURIComponent(comment)}`, {
+                method: 'PUT'
+            });
+            const result = await response.json();
+            
+            if (response.ok) {
+                showResult(`✅ ${result.message}`, 'success');
+            } else {
+                showResult(`❌ エラー: ${result.detail}`, 'error');
+            }
+        } catch (error) {
+            showResult(`❌ エラー: ${error.message}`, 'error');
+        }
+    }
+    
+    async function editColumnComment(tableName, columnName, currentComment) {
+        const newComment = prompt(`カラム "${columnName}" の説明を入力してください:`, currentComment);
+        if (newComment !== null) {
+            try {
+                const response = await fetch(`/table/${tableName}/column/${columnName}/comment?comment=${encodeURIComponent(newComment)}`, {
+                    method: 'PUT'
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ ${result.message}`, 'success');
+                    loadEditContent(); // 編集画面を更新
+                } else {
+                    showResult(`❌ エラー: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ エラー: ${error.message}`, 'error');
+            }
+        }
+    }
+    
+    async function renameColumn(tableName, columnName) {
+        const newName = prompt(`カラム "${columnName}" の新しい名前を入力してください:`, columnName);
+        if (newName && newName !== columnName) {
+            try {
+                const response = await fetch(`/table/${tableName}/column/${columnName}?new_name=${newName}`, {
+                    method: 'PUT'
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ ${result.message}`, 'success');
+                    loadEditContent(); // 編集画面を更新
+                } else {
+                    showResult(`❌ エラー: ${result.detail}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ エラー: ${error.message}`, 'error');
+            }
+        }
+    }
+    
+    // ページ読み込み時に編集内容を表示
+    loadEditContent();
+</script>
+{% endblock %}

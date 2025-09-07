@@ -1,0 +1,16 @@
+# MCP (Model Context Protocol) ライブラリ
+mcp>=1.0.0
+
+# DuckDB データベース
+duckdb>=0.9.0
+
+# Web フレームワーク
+fastapi>=0.104.0
+uvicorn>=0.24.0
+jinja2>=3.1.0
+
+# データ処理
+pandas>=2.1.0
+
+# その他
+python-multipart>=0.0.6
