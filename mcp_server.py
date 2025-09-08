@@ -79,18 +79,18 @@ class LocalDBMCPServer:
                 
                 if table_name not in table_names:
                     conn.close()
-                    return [TextContent(type="text", text=f"テーブル '{table_name}' が見つかりません。\n利用可能なテーブル: {', '.join(table_names) if table_names else 'なし'}")]
+                    return [TextContent(type="text", text=f"Table '{table_name}' not found.\nAvailable tables: {', '.join(table_names) if table_names else 'none'}")]
                 
                 # テーブルの詳細情報を取得
                 columns_info = conn.execute(f"DESCRIBE {table_name}").fetchall()
                 row_count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
                 
-                response = [f"## テーブル: {table_name}\n"]
-                response.append(f"**行数**: {row_count:,}\n")
-                response.append("### カラム情報\n")
+                response = [f"## Table: {table_name}\n"]
+                response.append(f"**Row count**: {row_count:,}\n")
+                response.append("### Columns\n")
                 response.append("```")
-                response.append("| カラム名 | データ型 | NULL許可 | デフォルト値 |")
-                response.append("|----------|----------|----------|--------------|")
+                response.append("| Column | Data Type | Nullable | Default |")
+                response.append("|----------|----------|----------|---------|")
                 
                 for col in columns_info:
                     col_name = col[0]
@@ -107,11 +107,11 @@ class LocalDBMCPServer:
                 
                 if not tables_result:
                     conn.close()
-                    return [TextContent(type="text", text="データベースにテーブルがありません。")]
+                    return [TextContent(type="text", text="No tables in the database.")]
                 
-                response = ["## データベース内のテーブル一覧\n"]
+                response = ["## Tables in database\n"]
                 response.append("```")
-                response.append("| テーブル名 | 行数 |")
+                response.append("| Table | Rows |")
                 response.append("|------------|------|")
                 
                 for table_row in tables_result:
@@ -120,10 +120,10 @@ class LocalDBMCPServer:
                         row_count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
                         response.append(f"| {table_name} | {row_count:,} |")
                     except Exception as e:
-                        response.append(f"| {table_name} | エラー |")
+                        response.append(f"| {table_name} | ERROR |")
                 
                 response.append("```")
-                response.append("\n特定のテーブルの詳細情報を取得するには、`table_name`パラメータを指定してください。")
+                response.append("\nTo get details for a specific table, provide the `table_name` parameter.")
             
             conn.close()
             logger.info("Table info retrieved successfully")
@@ -131,7 +131,7 @@ class LocalDBMCPServer:
             
         except Exception as e:
             logger.error(f"Error getting table info: {e}")
-            return [TextContent(type="text", text=f"テーブル情報の取得に失敗しました: {str(e)}")]
+            return [TextContent(type="text", text=f"Failed to get table information: {str(e)}")]
 
     async def _execute_query(self, query: str, limit: int) -> List[TextContent]:
         try:
@@ -150,10 +150,10 @@ class LocalDBMCPServer:
             logger.info(f"Query executed successfully, returned {len(result)} rows")
             
             if not result:
-                return [TextContent(type="text", text="クエリの結果がありません")]
+                return [TextContent(type="text", text="No results")]
             
             # テーブル形式で表示
-            response = [f"## クエリ結果 ({len(result)}行)\n"]
+            response = [f"## Query Results ({len(result)} rows)\n"]
             response.append("```")
             response.append("| " + " | ".join(columns) + " |")
             response.append("|" + "|".join(["---"] * len(columns)) + "|")
@@ -173,7 +173,7 @@ class LocalDBMCPServer:
             
         except Exception as e:
             logger.error(f"Error executing query '{query[:50]}...': {e}")
-            return [TextContent(type="text", text=f"クエリの実行に失敗しました: {str(e)}")]
+            return [TextContent(type="text", text=f"Query execution failed: {str(e)}")]
 
     async def run(self):
         if not os.path.exists(self.db_path):
