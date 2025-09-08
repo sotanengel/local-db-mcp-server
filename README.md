@@ -44,7 +44,7 @@ docker compose up --build
 
 ### CSV/TSVファイルのアップロード
 
-1. Web UI (http://localhost:8000) にアクセス
+1. Web UI (http://localhost:8001) にアクセス
 2. CSVまたはTSVファイルをアップロード
 3. データがDuckDBに保存されます
 
@@ -61,24 +61,39 @@ MCPサーバーは以下のツールを提供します：
 5. **get_table_data** - 指定されたテーブルのデータを取得
 6. **search_tables** - テーブル名や説明でテーブルを検索
 
-#### MCPクライアントでの設定例
+#### Cursor への登録手順（mcp.json）
+
+Cursor からこの MCP サーバー（`local-db`）を使うには、MCP 設定ファイル `mcp.json` を作成します。
+
+- プロジェクト専用: プロジェクト直下に `.cursor/mcp.json`
+- グローバル: `~/.cursor/mcp.json`
+
+どちらか一方でOKです（プロジェクト内に置くとそのプロジェクトでのみ有効）。
+
+設定例（Docker 実行、macOS 推奨設定）:
 
 ```json
 {
   "mcpServers": {
     "local-db": {
-      "command": "docker",
+      "command": "/usr/local/bin/docker",
       "args": [
         "exec",
         "-i",
         "local-db-mcp-server-mcp-server-1",
         "python",
         "mcp_server.py"
-      ]
+      ],
+      "env": {},
+      "disabled": false,
+      "autoApprove": ["execute_query", "get_table_info"]
     }
   }
 }
 ```
+
+トラブルシューティング:
+- Output パネル → ドロップダウンから「MCP Logs」を選択してログを確認
 
 ### Web API エンドポイント
 
