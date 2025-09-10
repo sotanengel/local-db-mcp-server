@@ -9,7 +9,7 @@
         <a href="/table/{{ table_name }}">← データ表示に戻る</a>
     </div>
     
-    <h1>{{ table_name }} <span id="recordCount" class="record-count"></span></h1>
+    <h1>{{ table_name }} <span id="recordCount" class="record-count"></span> <button id="bulkSaveBtn" class="action-button" onclick="performBulkUpdate()" style="margin-left:8px;">一括更新</button></h1>
     <div id="editContent"></div>
     <div id="result"></div>
 </div>
@@ -27,33 +27,35 @@
             
             let html = '';
             
-            // テーブル説明の定義編集
+            // テーブル情報（テーブル名 + 説明を1つの表に統合）
             html += `<h4>テーブル情報</h4>`;
-            html += `<table class="table-info-table">
-                        <tr><th>テーブル名</th><th>テーブル説明</th><th>操作</th></tr>
+            html += `<table class=\"table-info-table\">
+                        <tr><th>テーブル名</th><th>説明</th></tr>
                         <tr>
-                            <td><strong>${tableName}</strong></td>
                             <td>
-                                <input type="text" id="tableComment" placeholder="テーブルの説明を入力してください" value="${data.table_comment || ''}" class="description-input">
+                                <input type=\"text\" id=\"newTableName\" value=\"${data.table || tableName}\" class=\"description-input\">
                             </td>
                             <td>
-                                <button onclick="updateTableComment('${tableName}')" class="update-button">更新</button>
+                                <input type=\"text\" id=\"tableComment\" placeholder=\"テーブルの説明を入力してください\" value=\"${data.table_comment || ''}\" class=\"description-input\">
                             </td>
                         </tr>
                     </table>`;
             
             html += '<h4>カラム一覧</h4>';
             html += '<table class="columns-table">';
-            html += '<tr><th>カラム名</th><th>データ型</th><th>説明</th><th>操作</th></tr>';
-            
-            for (const column of data.columns) {
-                html += `<tr>
-                            <td><strong>${column.name}</strong></td>
-                            <td>${column.type}</td>
-                            <td>${column.comment || '説明なし'}</td>
+            html += '<tr><th>カラム名</th><th>データ型</th><th>説明</th></tr>';
+
+            for (let i = 0; i < data.columns.length; i++) {
+                const column = data.columns[i];
+                const idx = i;
+                const safeComment = (column.comment || '').replace(/"/g, '&quot;');
+                html += `<tr class="column-row" data-original-name="${column.name}">
                             <td>
-                                <button onclick="renameColumn('${tableName}', '${column.name}')" class="action-button">名前変更</button>
-                                <button onclick="editColumnComment('${tableName}', '${column.name}', '${column.comment || ''}')" class="action-button">説明編集</button>
+                                <input type="text" id="col-name-${idx}" value="${column.name}" class="description-input" />
+                            </td>
+                            <td>${column.type}</td>
+                            <td>
+                                <input type="text" id="col-comment-${idx}" value="${safeComment}" class="description-input" />
                             </td>
                         </tr>`;
             }
@@ -70,63 +72,71 @@
         resultDiv.innerHTML = `<div class="result ${type}">${message}</div>`;
     }
     
-    async function updateTableComment(tableName) {
-        const comment = document.getElementById('tableComment').value;
+    async function performBulkUpdate() {
+        const resultArea = document.getElementById('result');
+        function note(msg, type) { resultArea.innerHTML = `<div class=\"result ${type}\">${msg}</div>`; }
+
+        let currentTableName = tableName;
+        const desiredTableNameInput = document.getElementById('newTableName');
+        const desiredTableName = desiredTableNameInput ? desiredTableNameInput.value.trim() : currentTableName;
+        const commentInput = document.getElementById('tableComment');
+        const desiredComment = commentInput ? commentInput.value : '';
+
+        // カラム収集
+        const rows = Array.from(document.querySelectorAll('.column-row'));
+        const columns = rows.map((row, i) => {
+            const originalName = row.getAttribute('data-original-name');
+            const newName = (document.getElementById(`col-name-${i}`)?.value || '').trim();
+            const newComment = document.getElementById(`col-comment-${i}`)?.value || '';
+            return { originalName, newName, newComment };
+        });
+
         try {
-            const response = await fetch(`/table/${tableName}/comment?comment=${encodeURIComponent(comment)}`, {
-                method: 'PUT'
-            });
-            const result = await response.json();
-            
-            if (response.ok) {
-                showResult(`✅ ${result.message}`, 'success');
-            } else {
-                showResult(`❌ エラー: ${result.detail}`, 'error');
-            }
-        } catch (error) {
-            showResult(`❌ エラー: ${error.message}`, 'error');
-        }
-    }
-    
-    async function editColumnComment(tableName, columnName, currentComment) {
-        const newComment = prompt(`カラム "${columnName}" の説明を入力してください:`, currentComment);
-        if (newComment !== null) {
-            try {
-                const response = await fetch(`/table/${tableName}/column/${columnName}/comment?comment=${encodeURIComponent(newComment)}`, {
-                    method: 'PUT'
-                });
-                const result = await response.json();
-                
-                if (response.ok) {
-                    showResult(`✅ ${result.message}`, 'success');
-                    loadEditContent(); // 編集画面を更新
+            // 1) カラム名の変更（必要なもののみ）
+            for (const col of columns) {
+                if (col.newName && col.newName !== col.originalName) {
+                    const resp = await fetch(`/table/${encodeURIComponent(currentTableName)}/column/${encodeURIComponent(col.originalName)}?new_name=${encodeURIComponent(col.newName)}`, { method: 'PUT' });
+                    const data = await resp.json();
+                    if (!resp.ok) throw new Error(data && data.detail ? data.detail : 'カラム名更新エラー');
+                    // 後続処理では新しい名前を使う
+                    col.effectiveName = col.newName;
                 } else {
-                    showResult(`❌ エラー: ${result.detail}`, 'error');
+                    col.effectiveName = col.originalName;
                 }
-            } catch (error) {
-                showResult(`❌ エラー: ${error.message}`, 'error');
             }
-        }
-    }
-    
-    async function renameColumn(tableName, columnName) {
-        const newName = prompt(`カラム "${columnName}" の新しい名前を入力してください:`, columnName);
-        if (newName && newName !== columnName) {
-            try {
-                const response = await fetch(`/table/${tableName}/column/${columnName}?new_name=${newName}`, {
-                    method: 'PUT'
+
+            // 2) カラム説明の更新
+            for (const col of columns) {
+                const resp = await fetch(`/table/${encodeURIComponent(currentTableName)}/column/${encodeURIComponent(col.effectiveName)}/comment?comment=${encodeURIComponent(col.newComment)}`, { method: 'PUT' });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data && data.detail ? data.detail : 'カラム説明更新エラー');
+            }
+
+            // 3) テーブル説明の更新
+            if (commentInput) {
+                const resp = await fetch(`/table/${encodeURIComponent(currentTableName)}/comment?comment=${encodeURIComponent(desiredComment)}`, { method: 'PUT' });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data && data.detail ? data.detail : 'テーブル説明更新エラー');
+            }
+
+            // 4) テーブル名の変更（最後に）
+            if (desiredTableName && desiredTableName !== currentTableName) {
+                const resp = await fetch(`/table/${encodeURIComponent(currentTableName)}/rename`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_name: desiredTableName })
                 });
-                const result = await response.json();
-                
-                if (response.ok) {
-                    showResult(`✅ ${result.message}`, 'success');
-                    loadEditContent(); // 編集画面を更新
-                } else {
-                    showResult(`❌ エラー: ${result.detail}`, 'error');
-                }
-            } catch (error) {
-                showResult(`❌ エラー: ${error.message}`, 'error');
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data && data.detail ? data.detail : 'テーブル名更新エラー');
+                note(`✅ すべて更新しました。遷移します…`, 'success');
+                window.location.href = `/table/${encodeURIComponent(desiredTableName)}/edit`;
+                return;
             }
+
+            note('✅ すべて更新しました', 'success');
+            loadEditContent();
+        } catch (e) {
+            note(`❌ エラー: ${e.message}`, 'error');
         }
     }
     

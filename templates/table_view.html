@@ -81,21 +81,31 @@
     async function loadTableData() {
         try {
             const response = await fetch(`/query/${tableName}?limit=100`);
-            const data = await response.json();
-            
+            let data;
+            try {
+                data = await response.json();
+            } catch (_) {
+                throw new Error('サーバーからの応答をパースできませんでした');
+            }
+
+            if (!response.ok) {
+                const msg = (data && data.detail) ? data.detail : `HTTP ${response.status}`;
+                throw new Error(msg);
+            }
+
+            const rows = Array.isArray(data.data) ? data.data : [];
+
             let html = '';
-            
-            if (data.data.length === 0) {
+            if (rows.length === 0) {
                 html += '<p>データがありません。</p>';
             } else {
                 html += '<table><tr>';
-                for (const key in data.data[0]) {
+                for (const key in rows[0]) {
                     html += `<th>${key}</th>`;
                 }
                 html += '</tr>';
-                
-                for (let i = 0; i < data.data.length; i++) {
-                    const row = data.data[i];
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
                     html += '<tr>';
                     for (const value of Object.values(row)) {
                         html += `<td>${value}</td>`;
@@ -104,7 +114,7 @@
                 }
                 html += '</table>';
             }
-            
+
             document.getElementById('tableData').innerHTML = html;
         } catch (error) {
             document.getElementById('tableData').innerHTML = `<p>エラー: ${error.message}</p>`;
