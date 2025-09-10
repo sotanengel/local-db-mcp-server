@@ -36,8 +36,8 @@ docker compose up --build
 ```
 
 ### 3. アクセス
-- **Web UI**: http://localhost:8000
-- **API ドキュメント**: http://localhost:8000/docs
+- **Web UI**: http://localhost:8001
+- **API ドキュメント**: http://localhost:8001/docs
 - **MCPサーバー**: Dockerコンテナ内で実行（stdio通信）
 
 ## 使用方法
