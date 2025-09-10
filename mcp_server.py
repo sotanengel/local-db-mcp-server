@@ -85,19 +85,40 @@ class LocalDBMCPServer:
                 columns_info = conn.execute(f"DESCRIBE {table_name}").fetchall()
                 row_count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
                 
+                # テーブルコメントを取得
+                try:
+                    table_comment_result = conn.execute(f"SELECT comment FROM duckdb_tables() WHERE table_name = '{table_name}'").fetchone()
+                    table_comment = table_comment_result[0] if table_comment_result and table_comment_result[0] else ""
+                except:
+                    table_comment = ""
+                
+                # カラムコメントを取得
+                try:
+                    column_comments_result = conn.execute(f"""
+                        SELECT column_name, comment 
+                        FROM duckdb_columns() 
+                        WHERE table_name = '{table_name}' AND comment IS NOT NULL
+                    """).fetchall()
+                    column_comments = {row[0]: row[1] for row in column_comments_result}
+                except:
+                    column_comments = {}
+                
                 response = [f"## Table: {table_name}\n"]
+                if table_comment:
+                    response.append(f"**Description**: {table_comment}\n")
                 response.append(f"**Row count**: {row_count:,}\n")
                 response.append("### Columns\n")
                 response.append("```")
-                response.append("| Column | Data Type | Nullable | Default |")
-                response.append("|----------|----------|----------|---------|")
+                response.append("| Column | Data Type | Nullable | Default | Description |")
+                response.append("|----------|----------|----------|---------|-------------|")
                 
                 for col in columns_info:
                     col_name = col[0]
                     col_type = col[1]
                     nullable = "YES" if col[2] else "NO"
                     default = col[3] if col[3] is not None else ""
-                    response.append(f"| {col_name} | {col_type} | {nullable} | {default} |")
+                    comment = column_comments.get(col_name, "")
+                    response.append(f"| {col_name} | {col_type} | {nullable} | {default} | {comment} |")
                 
                 response.append("```")
                 
@@ -111,16 +132,24 @@ class LocalDBMCPServer:
                 
                 response = ["## Tables in database\n"]
                 response.append("```")
-                response.append("| Table | Rows |")
-                response.append("|------------|------|")
+                response.append("| Table | Rows | Description |")
+                response.append("|------------|------|-------------|")
                 
                 for table_row in tables_result:
                     table_name = table_row[0]
                     try:
                         row_count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-                        response.append(f"| {table_name} | {row_count:,} |")
+                        
+                        # テーブルコメントを取得
+                        try:
+                            table_comment_result = conn.execute(f"SELECT comment FROM duckdb_tables() WHERE table_name = '{table_name}'").fetchone()
+                            table_comment = table_comment_result[0] if table_comment_result and table_comment_result[0] else ""
+                        except:
+                            table_comment = ""
+                        
+                        response.append(f"| {table_name} | {row_count:,} | {table_comment} |")
                     except Exception as e:
-                        response.append(f"| {table_name} | ERROR |")
+                        response.append(f"| {table_name} | ERROR | |")
                 
                 response.append("```")
                 response.append("\nTo get details for a specific table, provide the `table_name` parameter.")
