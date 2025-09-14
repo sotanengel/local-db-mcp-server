@@ -1,6 +1,8 @@
 # Local DB MCP Server
 
-プログラミングに詳しくない人でも手元の環境で立ち上げられるMCPサーバーです。
+AIエージェントが`ユーザーが提供したデータ`を分析できるようにするMPCサーバーです。
+
+データの格納もUI経由で行うことができるため、誰でも簡単にAIエージェントに分かりやすい形式でデータを提供することができます。
 
 ## 機能
 
@@ -15,42 +17,58 @@
 - テーブル一覧の取得
 - テーブルスキーマ・メタデータの取得
 - SQLクエリの実行
-- テーブル検索機能
 
-## 必要な環境
-
-- Docker
-- Docker Compose
-
-## 起動方法
+## 初期設定
 
 ### 1. リポジトリをクローン
 ```bash
-git clone <repository-url>
+git clone https://github.com/sotanengel/local-db-mcp-server
 cd local-db-mcp-server
 ```
 
-### 2. Dockerコンテナを起動
+### 2. Dockerのアプリケーションをダウンロード
+[公式サイト](https://www.docker.com/ja-jp/)よりアプリケーションをダウンロードしてください。
+ダウンロード後はアプリケーションを起動してください。
+
+### 3. Dockerコンテナを起動
 ```bash
 docker compose up --build
 ```
 
-### 3. アクセス
-- **Web UI**: http://localhost:8001
-- **API ドキュメント**: http://localhost:8001/docs
-- **MCPサーバー**: Dockerコンテナ内で実行（stdio通信）
-
 ## 使用方法
 
-### CSV/TSVファイルのアップロード
+### データの格納する
 
-1. Web UI (http://localhost:8001) にアクセス
+AIエージェントに利用させたいデータを以下の手順で登録してください。
+
+1. [データの格納画面](http://localhost:8001) にアクセス
+
+<img width="1256" height="708" alt="image" src="https://github.com/user-attachments/assets/f6e1055f-afe0-4514-a6ae-90212af29eb8" />
+
 2. CSVまたはTSVファイルをアップロード
-3. データがDuckDBに保存されます
 
-### MCPサーバーの使用
+<img width="1220" height="170" alt="image" src="https://github.com/user-attachments/assets/9009d771-2d15-4dad-bd76-d6955fc7550a" />
 
-MCPサーバーは以下のツールを提供します：
+### データに説明を追加する
+
+AIエージェントがデータ分析を行う際に、テーブルの情報が明確に定義されていると分析の精度が上がるため以下の手順で設定を行なってください。
+
+1. テーブル情報を定義したいテーブル名をクリックする
+
+<img width="1214" height="357" alt="image" src="https://github.com/user-attachments/assets/41fea3c9-9fd3-435a-8cf6-65a9b899f44a" />
+
+2. 画面上部の`テーブルの定義を編集`をクリック
+
+<img width="1204" height="146" alt="image" src="https://github.com/user-attachments/assets/28a0ac87-c7e5-47a5-bbcd-36ed2d812694" />
+
+3. 入力欄に定義を入力し、保存する
+
+<img width="1227" height="563" alt="image" src="https://github.com/user-attachments/assets/44bbfac5-3fb4-4eff-a4fa-4a925f7bd8c5" />
+
+
+### AIエージェントがデータを利用する
+
+AIエージェントは以下のツールを利用できます。
 
 #### 利用可能なツール
 
@@ -58,10 +76,10 @@ MCPサーバーは以下のツールを提供します：
 2. **get_table_schema** - 指定されたテーブルのスキーマ情報を取得
 3. **get_table_metadata** - テーブルのメタデータ（説明、レコード数、カラム情報）を取得
 4. **execute_query** - SQLクエリを実行して結果を返す
-5. **get_table_data** - 指定されたテーブルのデータを取得
-6. **search_tables** - テーブル名や説明でテーブルを検索
 
-#### Cursor への登録手順（mcp.json）
+#### AIエージェントへのMCPサーバーの登録方法
+
+##### Cursor への登録手順（mcp.json）
 
 Cursor からこの MCP サーバー（`local-db`）を使うには、MCP 設定ファイル `mcp.json` を作成します。
 
@@ -70,7 +88,7 @@ Cursor からこの MCP サーバー（`local-db`）を使うには、MCP 設定
 
 どちらか一方でOKです（プロジェクト内に置くとそのプロジェクトでのみ有効）。
 
-設定例（Docker 実行、macOS 推奨設定）:
+設定例（macOS 推奨設定）:
 
 ```json
 {
@@ -90,56 +108,4 @@ Cursor からこの MCP サーバー（`local-db`）を使うには、MCP 設定
     }
   }
 }
-```
-
-トラブルシューティング:
-- Output パネル → ドロップダウンから「MCP Logs」を選択してログを確認
-
-### Web API エンドポイント
-
-- `GET /health` - ヘルスチェック
-- `GET /tables` - AIが参照できるデータ一覧
-- `GET /query/{table_name}` - テーブルデータの取得
-- `POST /upload` - ファイルアップロード
-
-## データの永続化
-
-データはDocker内のボリュームに保存され、コンテナを再起動してもデータは保持されます。ホスト側のファイルシステムには直接保存されません。
-
-## 停止方法
-
-```bash
-docker compose down
-```
-
-## データの完全削除
-
-Docker内のデータも含めて完全に削除する場合：
-
-```bash
-docker compose down -v
-```
-
-これにより、Dockerボリュームも削除され、すべてのデータが失われます。
-
-## 開発
-
-### ログの確認
-```bash
-docker-compose logs -f
-```
-
-### コンテナ内でのシェル実行
-```bash
-# Web UIコンテナ
-docker compose exec web-ui bash
-
-# MCPサーバーコンテナ
-docker compose exec mcp-server bash
-```
-
-### MCPサーバーのテスト
-```bash
-# MCPサーバーのテストを実行
-docker compose exec mcp-server python test_mcp_server.py
 ```
