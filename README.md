@@ -63,7 +63,7 @@ AIエージェントがデータ分析を行う際に、テーブルの情報が
 
 3. 入力欄に定義を入力し、保存する
 
-<img width="1227" height="563" alt="image" src="https://github.com/user-attachments/assets/44bbfac5-3fb4-4eff-a4fa-4a925f7bd8c5" />
+<img width="1258" height="606" alt="image" src="https://github.com/user-attachments/assets/fcd62155-77d5-4743-9bbc-d68b3cb45c73" />
 
 
 ### AIエージェントがデータを利用する
